@@ -187,39 +187,37 @@ def _do_text_command(server, fromUser, toUser, content):
         return server._reply_text(fromUser, toUser, u'Unknow command: '+temp[0])
 
 
-def _do_get_manual(server, fromUser, toUser, para):
+def _do_exec_command(server, fromUser, toUser, cmd):
     import commands
-    save_path = '/tmp/wx_manual.txt'
+    save_path = '/tmp/wx_command.txt'
+
+    if not _check_user(fromUser):
+        return server._reply_text(fromUser, toUser, u'Permission denied…')
+
     try:
-        shell_cmd = 'man' + ' ' + para + ' ' + '>' + ' ' + save_path
-        #shell_cmd = para + ' ' + '--help' + '>' + ' ' + save_path
-        print '%s' %shell_cmd
+        shell_cmd = cmd + ' > ' + save_path + ' 2>&1'
         commands.getoutput(shell_cmd)
 
+        result = ""
         fd = open(save_path, 'rb')
-        result = fd.read()
-        fd.close()
 
-        strlen = len(result)
-        #Max Text Message Length 2048 bytes(UTF-8)
-        if strlen >= 2001:
-            return server._reply_text(fromUser, toUser, result[:1980])
-        else:
-            return server._reply_text(fromUser, toUser, result[:strlen])
-        '''
-        begin = 0
-        for end in range(2001, strlen, 2001):
-            #ret = server.client.send.post(fromUser, toUser, result[begin:end])
-            data = '{"touser":"oWB27wAZB7_ITyqO8ML_CafFfvgc", "msgtype":"text", "text":{ "content":"hello!"}}'
-            ret = server.client.message.custom.send.post(body=data)
-            begin += 2001
-        '''
+        for line in fd:
+            text = line.rstrip()
+            if len(text) == 0:
+                continue
+            #Max Text Message Length 2048 bytes(UTF-8)
+            if len(result) + len(text) > 2048:
+                break
+            result += text + '\n'
+
+        fd.close()
+        return server._reply_text(fromUser, toUser, result)
     except Exception, e:
         err_msg += _punctuation_clear(str(e))
         return server._reply_text(fromUser, toUser, err_msg)
 
 
-def _do_text_command_help(server, fromUser, toUser, para):
+def _do_print_help(server, fromUser, toUser, para):
     data = "commands:\n"
     for (k, v) in _weixin_text_command_table.items():
         data += "\t%s\n" %(k)
@@ -227,8 +225,8 @@ def _do_text_command_help(server, fromUser, toUser, para):
 
 
 _weixin_text_command_table = {
-    'help'                  :   _do_text_command_help,
-    'man'                   :   _do_get_manual,
+    'help'                  :   _do__print_help,
+    'cmd'                   :   _do_exec_command,
     'image'                 :   _do_click_V1002_PICTURES,
 }
 
