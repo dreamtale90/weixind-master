@@ -99,6 +99,22 @@ def _take_snapshot(client):
     return client.media.upload.file(type='image', jpg=open(save_path, 'rb'))
 
 
+def _talk_with_simsimi(topic):
+    import json
+    import urllib2
+    topic = topic.encode('UTF-8')
+    entopic = urllib2.quote(topic)
+    send_headers = {
+    'Cookie':'Filtering=0.0; Filtering=0.0; isFirst=1; isFirst=1; simsimi_uid=50840753; simsimi_uid=50840753; teach_btn_url=talk; teach_btn_url=talk; sid=s%3AzwUdofEDCGbrhxyE0sxhKEkF.1wDJhD%2BASBfDiZdvI%2F16VvgTJO7xJb3ZZYT8yLIHVxw; selected_nc=zh; selected_nc=zh; menuType=web; menuType=web; __utma=119922954.2139724797.1396516513.1396516513.1396703679.3; __utmc=119922954; __utmz=119922954.1396516513.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)'
+    }
+    baseurl = r'http://www.simsimi.com/func/reqN?lc=zh&ft=0.0&req='
+    url = baseurl+entopic
+    req = urllib2.Request(url,headers=send_headers)
+    resp = urllib2.urlopen(req)
+    answer = json.loads(resp.read())
+    return answer
+
+
 def _do_event_subscribe(server, fromUser, toUser, doc):
     return server._reply_text(fromUser, toUser, u'hello!')
 
@@ -182,7 +198,7 @@ _weixin_click_table = {
 def _do_text_command(server, fromUser, toUser, content):
     temp = content.split(' ')
     try:
-        return _weixin_text_command_table[temp[0]](server, fromUser, toUser, temp[1])
+        return _weixin_text_command_table[temp[0]](server, fromUser, toUser, content[len(temp[0]) + 1:])
     except KeyError, e:
         return server._reply_text(fromUser, toUser, u'Unknow command: '+temp[0])
 
@@ -197,6 +213,7 @@ def _do_exec_command(server, fromUser, toUser, cmd):
     try:
         shell_cmd = cmd + ' > ' + save_path + ' 2>&1'
         commands.getoutput(shell_cmd)
+        print shell_cmd
 
         result = ""
         fd = open(save_path, 'rb')
@@ -206,7 +223,7 @@ def _do_exec_command(server, fromUser, toUser, cmd):
             if len(text) == 0:
                 continue
             #Max Text Message Length 2048 bytes(UTF-8)
-            if len(result) + len(text) > 2048:
+            if len(result) + len(text) > 2000:
                 break
             result += text + '\n'
 
@@ -225,7 +242,7 @@ def _do_print_help(server, fromUser, toUser, para):
 
 
 _weixin_text_command_table = {
-    'help'                  :   _do__print_help,
+    'help'                  :   _do_print_help,
     'cmd'                   :   _do_exec_command,
     'image'                 :   _do_click_V1002_PICTURES,
 }
@@ -296,7 +313,6 @@ class weixinserver:
         self.client = WeiXinClient('wxaece866e46e9d4a6', 'c104ddad7eef2e369acb1aee01bf8341')
         try:
             self.client.request_access_token()
-            #print 'access_token = %s' %(self.client.access_token)
         except Exception, e:
             self.client.set_access_token('ThisIsAFakeToken', 1800, persistence=True)
 
@@ -308,6 +324,7 @@ class weixinserver:
         if content[0] == '.':
             return _do_text_command(self, fromUser, toUser, content[1:])
         reply_msg = content
+        #reply_msg = _talk_with_simsimi(content)
         return self._reply_text(fromUser, toUser, reply_msg)
 
     def _recv_event(self, fromUser, toUser, doc):
