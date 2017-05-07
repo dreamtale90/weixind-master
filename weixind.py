@@ -15,7 +15,12 @@ from lxml import etree
 from weixin import WeiXinClient
 from weixin import APIError
 from weixin import AccessTokenError
+from sakshat import SAKSHAT
+from datetime import datetime, timedelta
 
+
+#Declare the SAKS Board
+SAKS = SAKSHAT()
 
 _TOKEN = 'dreamtale90'
 
@@ -63,6 +68,17 @@ def _cpu_and_gpu_temp():
     return (float(ctemp) / 1000, float(gtemp))
 
 
+def get_room_temp():
+    #从 ds18b20 读取温度（摄氏度为单位）
+    #返回值为 -128.0 表示读取失败
+    temp = SAKS.ds18b20.temperature
+
+    #数码管显示温度数值，5位(含小数点)、精确到小数点1后1位
+    #SAKS.digital_display.show(("%5.1f" % temp).replace(' ','#'))
+
+    return temp
+
+
 def _json_to_ditc(ostr):
     import json
     try:
@@ -91,11 +107,37 @@ def _udp_client(addr, data):
 
 
 def _take_snapshot(client):
-    import commands
-    ipc_cmd = 'raspistill -t 300 -rot 180 -w 640 -h 480'
-    save_path = '/tmp/wx_image.jpg'
-    shell_cmd = ipc_cmd + ' ' + '-o' + ' ' + save_path
-    commands.getoutput(shell_cmd);
+    import picamera
+    curTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    save_path = './../camera/' + 'img' + curTime + '.jpg'
+
+    camera = picamera.PiCamera()
+
+    #camera.led = False
+    camera.annotate_text_size = 16
+    camera.annotate_foreground = picamera.Color('#FFFF00')
+    camera.annotate_text = '                                                           ' + '^_^ ' + curTime
+    #camera.resolution = (1024, 768)
+    #camera.sharpness = 0
+    #camera.contrast = 0
+    #camera.brightness = 50
+    #camera.saturation = 0
+    #camera.ISO = 0
+    #camera.video_stabilization = False
+    #camera.exposure_compensation = 0
+    #camera.exposure_mode = 'auto'
+    #camera.meter_mode = 'average'
+    #camera.awb_mode = 'auto'
+    #camera.image_effect = 'none'
+    #camera.color_effects = None
+    #camera.rotation = 0
+    #camera.hflip = False
+    #camera.vflip = False
+    #camera.crop = (0.0, 0.0, 1.0, 1.0)
+
+    time.sleep(0.5)
+    camera.capture(save_path)
+    camera.close()
     return client.media.upload.file(type='image', jpg=open(save_path, 'rb'))
 
 
@@ -151,8 +193,8 @@ _weixin_event_table = {
 
 def _do_click_V1001_TEMPERATURE(server, fromUser, toUser, doc):
     c, g = _cpu_and_gpu_temp()
-    t = 36
-    reply_msg = u'CPU : %.02f℃\nGPU : %.02f℃\n室内温度 : %02.02f℃' %(c, g, t)
+    t = get_room_temp()
+    reply_msg = u'CPU : %.02f℃\nGPU : %.02f℃\nRoom : %.02f℃' %(c, g, t)
     return server._reply_text(fromUser, toUser, reply_msg)
 
 
