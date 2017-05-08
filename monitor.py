@@ -47,6 +47,8 @@ def kill_proc_by_name(ProcName):
 def check_loop():
     while True:
 
+        time.sleep(60)
+
         #send a request
         send_ret = send_request()
 
@@ -58,7 +60,6 @@ def check_loop():
                 #reboot
                 os.system('reboot')
 
-        time.sleep(60)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     check_loop()
