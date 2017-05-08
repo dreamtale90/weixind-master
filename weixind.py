@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Filename:     weixind.py
-# Author:       Liang Cha<ckmx945@gmail.com>
-# CreateDate:   2014-05-15
 
 import os
 import web
@@ -12,11 +10,12 @@ import hashlib
 import base64
 import memcache
 from lxml import etree
+from datetime import datetime, timedelta
+
 from weixin import WeiXinClient
 from weixin import APIError
 from weixin import AccessTokenError
 from sakshat import SAKSHAT
-from datetime import datetime, timedelta
 
 
 #Declare the SAKS Board
@@ -27,7 +26,14 @@ _TOKEN = 'dreamtale90'
 #URL路径，处理类
 _URLS = (
     '/weixin', 'weixinserver',
+    '/heartbeat', 'checkserver',
 )
+
+
+class checkserver:
+
+    def GET(self):
+        return 'OK4LIVE'
 
 
 def _check_hash(data):
