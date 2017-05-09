@@ -12,6 +12,7 @@ import memcache
 import threading
 from lxml import etree
 from datetime import datetime, timedelta
+from multiprocessing import Process, Manager
 
 from weixin import WeiXinClient
 from weixin import APIError
@@ -24,7 +25,7 @@ from sakshat import SAKSHAT
 SAKS = SAKSHAT()
 
 # 在这里设定闹钟定时时间
-__alarm_time = "07:30:00"
+__alarm_time = [07, 30, 00]
 __alarm_beep_status = False
 
 
@@ -52,23 +53,19 @@ def display_time():
     while True:
         # 以下代码获取系统时间、时、分、秒、星期的数值
         t = time.localtime()
-        h = t.tm_hour
-        m = t.tm_min
-        s = t.tm_sec
-        w = time.strftime('%w',t)
-        #print "%02d:%02d:%02d" % (h, m, s)
+        curTime = [t.tm_hour, t.tm_min, t.tm_sec]
 
-        if ("%02d:%02d:%02d" % (h, m, s)) == __alarm_time:
+        if curTime == __alarm_time:
             __alarm_beep_status = True
             __alarm_beep_times = 0
 
         if __dp:
             # 数码管显示小时和分，最后一位的小点每秒闪烁一次
-            SAKS.digital_display.show(("%02d%02d." % (h, m)))
+            SAKS.digital_display.show(("%02d%02d." % (curTime[0], curTime[1])))
 
             # 判断是否应该响起闹钟(还有整点报时)
-            if __alarm_beep_status or (m == 0 and s == 0):
-                if h >= 8 and h <= 20:
+            if __alarm_beep_status or (curTime[1] == 0 and curTime[2] == 0):
+                if curTime[0] >= 8 and curTime[1] <= 20:
                     SAKS.buzzer.on()
                 SAKS.ledrow.on()
                 __alarm_beep_times = __alarm_beep_times + 1
@@ -76,7 +73,7 @@ def display_time():
                 if __alarm_beep_times > 20:
                     __alarm_beep_status = False
         else:
-            SAKS.digital_display.show(("%02d%02d" % (h, m)))
+            SAKS.digital_display.show(("%02d%02d" % (curTime[0], curTime[1])))
 
             # 关闭闹钟
             if __alarm_beep_times != 0:
@@ -89,9 +86,15 @@ def display_time():
         time.sleep(0.5)
 
 
-def is_valid_time(strTime):
+def set_alarm_time(strTime):
+    global __alarm_time
+
     try:
-        time.strptime(strTime, "%H:%M")
+        temp = time.strptime(strTime, "%H:%M")
+
+        __alarm_time[0] = temp.tm_hour
+        __alarm_time[1] = temp.tm_min
+        __alarm_time[2] = 0
         return True
     except:
         return False
@@ -398,10 +401,9 @@ def _do_exec_command(server, fromUser, toUser, cmd):
 
 
 def _do_set_alarm(server, fromUser, toUser, content):
-    global __alarm_time
 
-    if is_valid_time(content) == True:
-        __alarm_time = content + ':00'
+    #check content and set alarm
+    if set_alarm_time(content) == True:
         rTime = calc_remain_time(content)
         reply_msg = u'Alarm set for %s hours and %s minutes from now' %(rTime[0], rTime[1])
         return server._reply_text(fromUser, toUser, reply_msg)
@@ -485,9 +487,12 @@ menu = '''{
 }'''
 
 
+init_menu = False
+
 class weixinserver:
 
     def __init__(self):
+        global init_menu
         #获取执行文件路径
         self.app_root = os.path.dirname(__file__)
         #设置回复模板路径
@@ -502,8 +507,10 @@ class weixinserver:
         except Exception, e:
             self.client.set_access_token('ThisIsAFakeToken', 1800, persistence=True)
 
-        #self.client.menu.delete.post()
-        #self.client.menu.create.post(body=menu)
+        if init_menu == False:
+            init_menu = True
+            self.client.menu.delete.post()
+            self.client.menu.create.post(body=menu)
 
     def _recv_text(self, fromUser, toUser, doc):
         content = doc.find('Content').text
@@ -600,169 +607,7 @@ class weixinserver:
         else:
             return self._reply_text(fromUser, toUser, u'Unknow msg:' + msgType)
 
-raspberry = threading.Thread(target = __HW_PROC__)
-application = web.application(_URLS, globals())
-
-if __name__ == "__main__":
-    raspberry.start()
-    application.run()
-            {
-               "type":"click",
-               "name":"实时图像",
-               "key":"V1002_PICTURES"
-            }]
-       }]
-           ,
-     "button":[
-       {
-           "name":"Menu2",
-           "sub_button":[
-            {
-               "type":"click",
-               "name":"Func3",
-               "key":"V2001_FUNC"
-            },
-            {
-               "type":"click",
-               "name":"Func4",
-               "key":"V2002_FUNC"
-            }]
-       }]
-           ,
-     "button":[
-       {
-           "name":"Menu3",
-           "sub_button":[
-            {
-               "type":"click",
-               "name":"Func5",
-               "key":"V3001_FUNC"
-            },
-            {
-               "type":"click",
-               "name":"Func6",
-               "key":"V3002_FUNC"
-            }]
-       }]
-}'''
-
-
-class weixinserver:
-
-    def __init__(self):
-        #获取执行文件路径
-        self.app_root = os.path.dirname(__file__)
-        #设置回复模板路径
-        self.templates_root = os.path.join(self.app_root, 'templates')
-        #初始化回复模板
-        self.render = web.template.render(self.templates_root)
-
-        #微信测试公众号
-        self.client = WeiXinClient('wxaece866e46e9d4a6', 'c104ddad7eef2e369acb1aee01bf8341')
-        try:
-            self.client.request_access_token()
-        except Exception, e:
-            self.client.set_access_token('ThisIsAFakeToken', 1800, persistence=True)
-
-        #self.client.menu.delete.post()
-        #self.client.menu.create.post(body=menu)
-
-    def _recv_text(self, fromUser, toUser, doc):
-        content = doc.find('Content').text
-        if content[0] == '.':
-            return _do_text_command(self, fromUser, toUser, content[1:])
-        reply_msg = content
-        #reply_msg = _talk_with_simsimi(content)
-        return self._reply_text(fromUser, toUser, reply_msg)
-
-    def _recv_event(self, fromUser, toUser, doc):
-        event = doc.find('Event').text
-        try:
-            return _weixin_event_table[event](self, fromUser, toUser, doc)
-        except KeyError, e:
-            return self._reply_text(fromUser, toUser, u'Unknow event:%s' %event)
-
-    def _recv_image(self, fromUser, toUser, doc):
-        url = doc.find('PicUrl').text
-        mid = doc.find('MediaId').text
-        rm = self.client.media.get.file(media_id=mid)
-        fname = './../recv_from_user/image/wx_%s.jpg' %(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        fd = open(fname, 'wb'); fd.write(rm.read()); fd.close(); rm.close()
-        return self._reply_text(fromUser, toUser, u'upload to:%s' %url)
-
-    def _recv_voice(self, fromUser, toUser, doc):
-        #import subprocess
-        cmd = doc.find('Recognition').text
-        mid = doc.find('MediaId').text
-        rm = self.client.media.get.file(media_id=mid)
-        fname = './../recv_from_user/voice/wx_%s.amr' %(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        fd = open(fname, 'wb'); fd.write(rm.read()); fd.close(); rm.close()
-        #subprocess.call(['omxplayer', '-o', 'local', fname])
-        if cmd is None:
-            return self._reply_text(fromUser, toUser, u'no Recognition, no command');
-        return self._reply_text(fromUser, toUser, u'Unknow recognition:%s' %cmd);
-
-    def _recv_video(self, fromUser, toUser, doc):
-        pass
-
-    def _recv_shortvideo(self, fromUser, toUser, doc):
-        mid = doc.find('MediaId').text
-        rm = self.client.media.get.file(media_id=mid)
-        fname = './../recv_from_user/video/wx_%s.mp4' %(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        fd = open(fname, 'wb'); fd.write(rm.read()); fd.close(); rm.close()
-        return self._reply_text(fromUser, toUser, u'shortvideo:%s' %fname);
-
-    def _recv_location(self, fromUser, toUser, doc):
-        pass
-
-    def _recv_link(self, fromUser, toUser, doc):
-        pass
-
-    def _reply_text(self, toUser, fromUser, msg):
-        return self.render.reply_text(toUser, fromUser, int(time.time()), msg)
-
-    def _reply_image(self, toUser, fromUser, media_id):
-        return self.render.reply_image(toUser, fromUser, int(time.time()), media_id)
-
-    def _reply_news(self, toUser, fromUser, title, descrip, picUrl, hqUrl):
-        return self.render.reply_news(toUser, fromUser, int(time.time()), title, descrip, picUrl, hqUrl)
-
-    def GET(self):
-        data = web.input()
-        try:
-            if _check_hash(data):
-                return data.echostr
-        except Exception, e:
-            return None
-
-    def POST(self):
-        str_xml = web.data()
-        doc = etree.fromstring(str_xml)
-        msgType = doc.find('MsgType').text
-        fromUser = doc.find('FromUserName').text
-        toUser = doc.find('ToUserName').text
-        print '%s->%s(%s)' %(fromUser, toUser, msgType)
-
-        if msgType == 'text':
-            return self._recv_text(fromUser, toUser, doc)
-        if msgType == 'event':
-            return self._recv_event(fromUser, toUser, doc)
-        if msgType == 'image':
-            return self._recv_image(fromUser, toUser, doc)
-        if msgType == 'voice':
-            return self._recv_voice(fromUser, toUser, doc)
-        if msgType == 'video':
-            return self._recv_video(fromUser, toUser, doc)
-        if msgType == 'shortvideo':
-            return self._recv_shortvideo(fromUser, toUser, doc)
-        if msgType == 'location':
-            return self._recv_location(fromUser, toUser, doc)
-        if msgType == 'link':
-            return self._recv_link(fromUser, toUser, doc)
-        else:
-            return self._reply_text(fromUser, toUser, u'Unknow msg:' + msgType)
-
-raspberry = threading.Thread(target = __HW_PROC__)
+raspberry = Process(target = __HW_PROC__)
 application = web.application(_URLS, globals())
 
 if __name__ == "__main__":

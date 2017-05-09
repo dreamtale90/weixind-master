@@ -111,7 +111,7 @@ class DigitalDisplayTM1637(object):
         :return: void
         '''
         self.set_numbers(str)
-        print(self.__numbers)
+        #print(self.__numbers)
 
         self.__ic_tm1637.set_command(0x44)
 
