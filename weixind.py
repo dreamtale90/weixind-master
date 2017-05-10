@@ -9,7 +9,6 @@ import types
 import hashlib
 import base64
 import memcache
-import threading
 from lxml import etree
 from datetime import datetime, timedelta
 from multiprocessing import Process, Manager
@@ -64,9 +63,9 @@ def display_time():
             SAKS.digital_display.show(("%02d%02d." % (curTime[0], curTime[1])))
 
             # 判断是否应该响起闹钟(还有整点报时)
-            if __alarm_beep_status or (curTime[1] == 0 and curTime[2] == 0):
-                if curTime[0] >= 8 and curTime[1] <= 20:
-                    SAKS.buzzer.on()
+            if __alarm_beep_status or ((curTime[1] == 0 and curTime[2] == 0)
+                    and (curTime[0] > 7 and curTime[0] < 22)):
+                SAKS.buzzer.on()
                 SAKS.ledrow.on()
                 __alarm_beep_times = __alarm_beep_times + 1
                 # 30次没按下停止键则自动停止闹铃
