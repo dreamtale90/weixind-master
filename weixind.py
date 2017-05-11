@@ -5,6 +5,7 @@
 import os
 import web
 import time
+import json
 import types
 import hashlib
 import base64
@@ -64,7 +65,7 @@ def display_time():
 
             # 判断是否应该响起闹钟(还有整点报时)
             if __alarm_beep_status or ((curTime[1] == 0 and curTime[2] == 0)
-                    and (curTime[0] > 7 and curTime[0] < 22)):
+                    and (curTime[0] > 6 and curTime[0] < 22)):
                 SAKS.buzzer.on()
                 SAKS.ledrow.on()
                 __alarm_beep_times = __alarm_beep_times + 1
@@ -150,6 +151,28 @@ class checkserver:
         return 'OK4LIVE'
 
 
+def my_print(data):
+    curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    print '[%s] %s' %(curTime, data)
+
+
+def transferContent(data):
+    if data == '':
+        return None
+    else:
+        string = ''
+        for c in content:
+            if c == '"':
+                string += '\\\"'
+            elif c == "'":
+                string += "\\\'"
+            elif c == "\\":
+                string += "\\\\"
+            else:
+                string += c
+        return string
+
+
 def _check_hash(data):
     signature = data.signature
     timestamp = data.timestamp
@@ -189,7 +212,6 @@ def _cpu_and_gpu_temp():
 
 
 def _json_to_ditc(ostr):
-    import json
     try:
         return json.loads(ostr)
     except Exception, e:
@@ -251,7 +273,6 @@ def _take_snapshot(client):
 
 
 def _talk_with_simsimi(topic):
-    import json
     import urllib2
     topic = topic.encode('UTF-8')
     entopic = urllib2.quote(topic)
@@ -284,6 +305,7 @@ def _do_event_LOCATION(server, fromUser, toUser, doc):
 
 def _do_event_CLICK(server, fromUser, toUser, doc):
     key = doc.find('EventKey').text
+    my_print(fromUser + '->' + key)
     try:
         return _weixin_click_table[key](server, fromUser, toUser, doc)
     except KeyError, e:
@@ -362,6 +384,7 @@ _weixin_click_table = {
 
 def _do_text_command(server, fromUser, toUser, content):
     temp = content.split(' ')
+    print content
     try:
         return _weixin_text_command_table[temp[0]](server, fromUser, toUser, content[len(temp[0]) + 1:])
     except KeyError, e:
@@ -378,7 +401,7 @@ def _do_exec_command(server, fromUser, toUser, cmd):
     try:
         shell_cmd = cmd + ' > ' + save_path + ' 2>&1'
         commands.getoutput(shell_cmd)
-        print shell_cmd
+        print (shell_cmd)
 
         result = ""
         fd = open(save_path, 'rb')
@@ -393,6 +416,9 @@ def _do_exec_command(server, fromUser, toUser, cmd):
             result += text + '\n'
 
         fd.close()
+
+        if result == '':
+            result = u'No Output'
         return server._reply_text(fromUser, toUser, result)
     except Exception, e:
         err_msg += _punctuation_clear(str(e))
@@ -513,6 +539,7 @@ class weixinserver:
 
     def _recv_text(self, fromUser, toUser, doc):
         content = doc.find('Content').text
+        my_print(fromUser + '->' + content)
         if content[0] == '.':
             return _do_text_command(self, fromUser, toUser, content[1:])
         reply_msg = content
@@ -585,7 +612,7 @@ class weixinserver:
         msgType = doc.find('MsgType').text
         fromUser = doc.find('FromUserName').text
         toUser = doc.find('ToUserName').text
-        print '%s->%s(%s)' %(fromUser, toUser, msgType)
+        curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
         if msgType == 'text':
             return self._recv_text(fromUser, toUser, doc)
@@ -610,5 +637,6 @@ raspberry = Process(target = __HW_PROC__)
 application = web.application(_URLS, globals())
 
 if __name__ == "__main__":
+    my_print('WeChat start !')
     raspberry.start()
     application.run()

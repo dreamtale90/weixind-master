@@ -15,14 +15,13 @@ def send_request():
     req = urllib2.Request(REQUEST_URLS)
 
     try:
-        response = urllib2.urlopen(req)
-        result = response.read()
+        for i in range(3):
+            response = urllib2.urlopen(req)
+            result = response.read()
 
-        #check result
-        if result == 'OK4LIVE':
-            return True
-        else:
-            print 'replay mismatch: %s' %result
+            #check result
+            if result == 'OK4LIVE':
+                return True
 
     except urllib2.URLError, e:
         print e.reason
@@ -40,7 +39,8 @@ def kill_proc_by_name(ProcName):
             os.kill(pid, signal.SIGKILL)
             return True
 
-    print '%s process is not exist !' %ProcName
+    curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    print '[%s] %s process is not exist !' %(curTime, ProcName)
     return False
 
 
@@ -53,8 +53,10 @@ def check_loop():
         send_ret = send_request()
 
         if send_ret == False:
+            curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+            print '[%s] http server not respond !' %curTime
             #kill ngrok process
-            kill_ret = kill_proc_by_name('test')
+            kill_ret = kill_proc_by_name('sunny')
 
             if kill_ret == False:
                 #reboot
