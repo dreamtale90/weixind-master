@@ -11,20 +11,25 @@ from datetime import datetime, timedelta
 REQUEST_URLS = 'http://dreamtale90.ngrok.cc/heartbeat'
 
 
+def my_print(data):
+    curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    print '[%s] %s' %(curTime, data)
+
+
 def send_request():
     req = urllib2.Request(REQUEST_URLS)
 
-    try:
-        for i in range(3):
+    for i in range(3):
+        try:
             response = urllib2.urlopen(req)
             result = response.read()
 
-            #check result
-            if result == 'OK4LIVE':
-                return True
+        except urllib2.URLError, e:
+            my_print(e.reason)
 
-    except urllib2.URLError, e:
-        print e.reason
+        #check result
+        if result == 'OK4LIVE':
+            return True
 
     return False
 
@@ -39,8 +44,7 @@ def kill_proc_by_name(ProcName):
             os.kill(pid, signal.SIGKILL)
             return True
 
-    curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
-    print '[%s] %s process is not exist !' %(curTime, ProcName)
+    my_print(ProcName + ' process is not exist !')
     return False
 
 
@@ -53,8 +57,7 @@ def check_loop():
         send_ret = send_request()
 
         if send_ret == False:
-            curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
-            print '[%s] http server not respond !' %curTime
+            my_print('http server not respond !')
             #kill ngrok process
             kill_ret = kill_proc_by_name('sunny')
 

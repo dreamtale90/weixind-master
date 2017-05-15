@@ -10,6 +10,7 @@ import types
 import hashlib
 import base64
 import memcache
+import threading
 from lxml import etree
 from datetime import datetime, timedelta
 from multiprocessing import Process, Manager
@@ -61,11 +62,11 @@ def display_time():
 
         if __dp:
             # 数码管显示小时和分，最后一位的小点每秒闪烁一次
-            SAKS.digital_display.show(("%02d%02d." % (curTime[0], curTime[1])))
+            SAKS.digital_display.show(("%02d%02d." % (t.tm_hour, t.tm_min)))
 
             # 判断是否应该响起闹钟(还有整点报时)
-            if __alarm_beep_status or ((curTime[1] == 0 and curTime[2] == 0)
-                    and (curTime[0] > 6 and curTime[0] < 22)):
+            if __alarm_beep_status or ((t.tm_min == 0 and t.tm_sec == 0)
+                    and (t.tm_hour > 6 and t.tm_hour < 22)):
                 SAKS.buzzer.on()
                 SAKS.ledrow.on()
                 __alarm_beep_times = __alarm_beep_times + 1
@@ -73,7 +74,7 @@ def display_time():
                 if __alarm_beep_times > 20:
                     __alarm_beep_status = False
         else:
-            SAKS.digital_display.show(("%02d%02d" % (curTime[0], curTime[1])))
+            SAKS.digital_display.show(("%02d%02d" % (t.tm_hour, t.tm_min)))
 
             # 关闭闹钟
             if __alarm_beep_times != 0:
@@ -131,7 +132,7 @@ def __HW_PROC__():
     display_time()
 
 
-
+##########################################################################
 
 
 ###############################################################################
@@ -144,6 +145,7 @@ _URLS = (
     '/heartbeat', 'checkserver',
 )
 
+root = 'oWB27wAZB7_ITyqO8ML_CafFfvgc'
 
 class checkserver:
 
@@ -154,23 +156,6 @@ class checkserver:
 def my_print(data):
     curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
     print '[%s] %s' %(curTime, data)
-
-
-def transferContent(data):
-    if data == '':
-        return None
-    else:
-        string = ''
-        for c in content:
-            if c == '"':
-                string += '\\\"'
-            elif c == "'":
-                string += "\\\'"
-            elif c == "\\":
-                string += "\\\\"
-            else:
-                string += c
-        return string
 
 
 def _check_hash(data):
@@ -187,10 +172,19 @@ def _check_hash(data):
 
 
 def _check_user(user_id):
-    user_list = ['oWB27wAZB7_ITyqO8ML_CafFfvgc', 'oWB27wHY_yeuDG27iJ91MudguUks']
+    user_list = [root, 'oWB27wHY_yeuDG27iJ91MudguUks', 'oWB27wEjytw9wY6_3o4W8tKrHtRA']
     if user_id in user_list:
         return True
     return False
+
+
+user_cache = dict()
+def get_user_name(server, user_id):
+    if user_id in user_cache:
+        return user_cache[user_id]
+    user_info = server.user.info.dget(openid=user_id, lang='zh_CN')
+    user_cache[user_id] = user_info.nickname
+    return user_info.nickname
 
 
 def _punctuation_clear(ostr):
@@ -209,13 +203,6 @@ def _cpu_and_gpu_temp():
     except Exception, e:
         return (0, 0)
     return (float(ctemp) / 1000, float(gtemp))
-
-
-def _json_to_ditc(ostr):
-    try:
-        return json.loads(ostr)
-    except Exception, e:
-        return None
 
 
 def _udp_client(addr, data):
@@ -237,39 +224,71 @@ def _udp_client(addr, data):
     return mm
 
 
-def _take_snapshot(client):
+def _take_snapshot(client, curTime):
     import picamera
-    curTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    save_path = './../send_to_user/image/' + 'img' + curTime + '.jpg'
+    camera = None
+    save_file = './../send_to_user/image/' + curTime + '.jpg'
 
-    camera = picamera.PiCamera()
+    try:
+        camera = picamera.PiCamera()
 
-    #camera.led = False
-    camera.annotate_text_size = 16
-    camera.annotate_foreground = picamera.Color('#FFFF00')
-    camera.annotate_text = '                                                           ' + '^_^ ' + curTime
-    #camera.resolution = (1024, 768)
-    #camera.sharpness = 0
-    #camera.contrast = 0
-    #camera.brightness = 50
-    #camera.saturation = 0
-    #camera.ISO = 0
-    #camera.video_stabilization = False
-    #camera.exposure_compensation = 0
-    #camera.exposure_mode = 'auto'
-    #camera.meter_mode = 'average'
-    #camera.awb_mode = 'auto'
-    #camera.image_effect = 'none'
-    #camera.color_effects = None
-    #camera.rotation = 0
-    #camera.hflip = False
-    #camera.vflip = False
-    #camera.crop = (0.0, 0.0, 1.0, 1.0)
+        #camera.led = False
+        camera.annotate_text_size = 16
+        camera.annotate_foreground = picamera.Color('#FFFF00')
+        camera.annotate_text = '                                                     ' + '^_^ ' + curTime
+        camera.resolution = (720, 480)
+        #camera.sharpness = 0
+        #camera.contrast = 0
+        #camera.brightness = 50
+        #camera.saturation = 0
+        #camera.ISO = 0
+        #camera.video_stabilization = False
+        #camera.exposure_compensation = 0
+        #camera.exposure_mode = 'auto'
+        #camera.meter_mode = 'average'
+        #camera.awb_mode = 'auto'
+        #camera.image_effect = 'none'
+        #camera.color_effects = None
+        #camera.rotation = 0
+        #camera.hflip = False
+        #camera.vflip = False
+        #camera.crop = (0.0, 0.0, 1.0, 1.0)
 
-    time.sleep(0.5)
-    camera.capture(save_path)
-    camera.close()
-    return client.media.upload.file(type='image', jpg=open(save_path, 'rb'))
+        time.sleep(0.5)
+        camera.capture(save_file)
+    finally:
+        camera.close()
+
+    return client.media.upload.file(type='image', jpg=open(save_file, 'rb'))
+
+
+def _take_video(client, curTime):
+    import picamera
+    import commands
+    camera = None
+    temp_file = '/tmp/input_raw.h264'
+    image_file = './../send_to_user/video/' + curTime + '.jpg'
+    video_file = './../send_to_user/video/' + curTime + '.mp4'
+
+    try:
+        camera = picamera.PiCamera()
+        camera.resolution = (720, 480)
+
+        camera.start_recording(temp_file)
+        camera.capture(image_file, resize = (160, 120))
+        camera.wait_recording(9)
+        camera.stop_recording()
+
+        #need to convert h264 to mp4
+        shell_cmd = 'MP4Box -add %s %s' %(temp_file, video_file)
+        commands.getoutput(shell_cmd)
+
+    finally:
+        camera.close()
+
+    thumb = client.media.upload.file(type='image', jpg=open(image_file, 'rb'))
+    video = client.media.upload.file(type='video', mpeg4=open(video_file, 'rb'))
+    return [video.media_id, thumb.media_id]
 
 
 def _talk_with_simsimi(topic):
@@ -288,6 +307,7 @@ def _talk_with_simsimi(topic):
 
 
 def _do_event_subscribe(server, fromUser, toUser, doc):
+    send_info_to_root(self.client, fromUser, 'text', 'subscribe' + ' (' + fromUser + ')')
     return server._reply_text(fromUser, toUser, u'hello!')
 
 
@@ -305,7 +325,7 @@ def _do_event_LOCATION(server, fromUser, toUser, doc):
 
 def _do_event_CLICK(server, fromUser, toUser, doc):
     key = doc.find('EventKey').text
-    my_print(fromUser + '->' + key)
+    send_info_to_root(server.client, fromUser, 'text', key)
     try:
         return _weixin_click_table[key](server, fromUser, toUser, doc)
     except KeyError, e:
@@ -323,24 +343,16 @@ _weixin_event_table = {
 
 
 def _do_click_V1001_TEMPERATURE(server, fromUser, toUser, doc):
-    c, g = _cpu_and_gpu_temp()
-    t = get_room_temp()
-    reply_msg = u'CPU : %.02f℃\nGPU : %.02f℃\nRoom : %.02f℃' %(c, g, t)
-    return server._reply_text(fromUser, toUser, reply_msg)
-
+    thread = threading.Thread(target = assistant, args = (fromUser, 'temp', None))
+    thread.start()
+    return 'success'
 
 def _do_click_V1002_PICTURES(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
-    data = None
-    err_msg = 'snapshot fail: '
-    try:
-        data = _take_snapshot(server.client)
-    except Exception, e:
-        err_msg += _punctuation_clear(str(e))
-        return server._reply_text(fromUser, toUser, err_msg)
-    return server._reply_image(fromUser, toUser, data.media_id)
-
+    thread = threading.Thread(target = assistant, args = (fromUser, 'image', None))
+    thread.start()
+    return 'success'
 
 def _do_click_V1003_VOICE(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
@@ -351,7 +363,9 @@ def _do_click_V1003_VOICE(server, fromUser, toUser, doc):
 def _do_click_V1004_VIDEO(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
-    return server._reply_text(fromUser, toUser, u'This feature is still under development. Stay tuned !')
+    thread = threading.Thread(target = assistant, args = (fromUser, 'video', None))
+    thread.start()
+    return 'success'
 
 
 def _do_click_V2001_FUNC(server, fromUser, toUser, doc):
@@ -382,9 +396,15 @@ _weixin_click_table = {
 }
 
 
+def _do_get_temp():
+    c, g = _cpu_and_gpu_temp()
+    t = get_room_temp()
+    reply_msg = 'CPU : %.02f℃\nGPU : %.02f℃\nRoom : %.02f℃' %(c, g, t)
+    return reply_msg
+
+
 def _do_text_command(server, fromUser, toUser, content):
     temp = content.split(' ')
-    print content
     try:
         return _weixin_text_command_table[temp[0]](server, fromUser, toUser, content[len(temp[0]) + 1:])
     except KeyError, e:
@@ -393,18 +413,18 @@ def _do_text_command(server, fromUser, toUser, content):
 
 def _do_exec_command(server, fromUser, toUser, cmd):
     import commands
-    save_path = '/tmp/wx_command.txt'
+    save_file = '/tmp/wx_command.txt'
 
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
 
+    err_msg = 'exec cmd fail: '
     try:
-        shell_cmd = cmd + ' > ' + save_path + ' 2>&1'
+        shell_cmd = cmd + ' > ' + save_file + ' 2>&1'
         commands.getoutput(shell_cmd)
-        print (shell_cmd)
 
-        result = ""
-        fd = open(save_path, 'rb')
+        result = ''
+        fd = open(save_file, 'rb')
 
         for line in fd:
             text = line.rstrip()
@@ -422,6 +442,7 @@ def _do_exec_command(server, fromUser, toUser, cmd):
         return server._reply_text(fromUser, toUser, result)
     except Exception, e:
         err_msg += _punctuation_clear(str(e))
+        my_print(err_msg)
         return server._reply_text(fromUser, toUser, err_msg)
 
 
@@ -447,7 +468,7 @@ _weixin_text_command_table = {
     'help'                  :   _do_print_help,
     'cmd'                   :   _do_exec_command,
     'alarm'                 :   _do_set_alarm,
-    'image'                 :   _do_click_V1002_PICTURES,
+    #'image'                 :   _do_set_camera,
 }
 
 
@@ -512,12 +533,43 @@ menu = '''{
 }'''
 
 
-init_menu = False
+def assistant(toUser, msgType, content):
+
+    ret = None
+    wx = weixinserver()
+
+    if msgType == 'text':
+        ret = wx._send_text(toUser, content)
+    if msgType == 'image':
+        ret = wx._send_image(toUser)
+    if msgType == 'voice':
+        ret = wx._send_voice(toUser)
+    if msgType == 'video':
+        ret = wx._send_video(toUser)
+    if msgType == 'temp':
+        ret = wx._send_text(toUser, _do_get_temp())
+
+
+def send_info_to_root(server, fromUser, msgType, content):
+    curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+
+    if server is None or fromUser is None:
+        message = '[%s] %s' %(curTime, content)
+    else:
+        message = '[%s] %s -> %s' %(curTime, get_user_name(server, fromUser), content)
+
+    print (message)
+
+    if fromUser == root:
+        return
+
+    thread = threading.Thread(target = assistant, args = (root, msgType, message))
+    thread.start()
+
 
 class weixinserver:
 
     def __init__(self):
-        global init_menu
         #获取执行文件路径
         self.app_root = os.path.dirname(__file__)
         #设置回复模板路径
@@ -529,17 +581,15 @@ class weixinserver:
         self.client = WeiXinClient('wxaece866e46e9d4a6', 'c104ddad7eef2e369acb1aee01bf8341')
         try:
             self.client.request_access_token()
+            #self.client.menu.delete.post()
+            #self.client.menu.create.post(body=menu)
+
         except Exception, e:
             self.client.set_access_token('ThisIsAFakeToken', 1800, persistence=True)
 
-        if init_menu == False:
-            init_menu = True
-            self.client.menu.delete.post()
-            self.client.menu.create.post(body=menu)
-
     def _recv_text(self, fromUser, toUser, doc):
         content = doc.find('Content').text
-        my_print(fromUser + '->' + content)
+        send_info_to_root(self.client, fromUser, 'text', content)
         if content[0] == '.':
             return _do_text_command(self, fromUser, toUser, content[1:])
         reply_msg = content
@@ -598,6 +648,39 @@ class weixinserver:
     def _reply_news(self, toUser, fromUser, title, descrip, picUrl, hqUrl):
         return self.render.reply_news(toUser, fromUser, int(time.time()), title, descrip, picUrl, hqUrl)
 
+    def _send_text(self, toUser, content):
+        data = '{"touser":"%s", "msgtype":"text", "text":{"content":"%s"}}' %(toUser, content)
+        return self.client.message.custom.send.post(body = data)
+
+    def _send_image(self, toUser):
+        image = None
+        curTime = datetime.now().strftime('%Y%m%d_%H%M%S')
+        send_info_to_root(self.client, toUser, 'text', 'image:' + curTime)
+
+        try:
+            image = _take_snapshot(self.client, curTime)
+        except Exception, e:
+            err_msg = 'take snapshot fail: ' + _punctuation_clear(str(e))
+            my_print(err_msg)
+            return None
+        data = '{"touser":"%s", "msgtype":"image", "image":{"media_id":"%s"}}' %(toUser, image.media_id)
+        return self.client.message.custom.send.post(body = data)
+
+    def _send_voice(self, toUser):
+        return
+
+    def _send_video(self, toUser):
+        mediaID = [0, 0]
+        curTime = datetime.now().strftime('%Y%m%d_%H%M%S')
+        send_info_to_root(self.client, toUser, 'text', 'video:' + curTime)
+        try:
+            mediaID = _take_video(self.client, curTime)
+        except Exception, e:
+            err_msg = 'take snapshot fail: ' + _punctuation_clear(str(e))
+            my_print(err_msg)
+        data = '{"touser":"%s", "msgtype":"video", "video":{"media_id":"%s", "thumb_media_id":"%s", "title":"%s", "description":"%s"}}' %(toUser, mediaID[0], mediaID[1], 'Personal Use Only !', curTime)
+        return self.client.message.custom.send.post(body = data)
+
     def GET(self):
         data = web.input()
         try:
@@ -612,7 +695,6 @@ class weixinserver:
         msgType = doc.find('MsgType').text
         fromUser = doc.find('FromUserName').text
         toUser = doc.find('ToUserName').text
-        curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
         if msgType == 'text':
             return self._recv_text(fromUser, toUser, doc)
@@ -637,6 +719,7 @@ raspberry = Process(target = __HW_PROC__)
 application = web.application(_URLS, globals())
 
 if __name__ == "__main__":
-    my_print('WeChat start !')
+    send_info_to_root(None, None, 'text', 'WeChat start !')
+
     raspberry.start()
     application.run()
