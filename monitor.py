@@ -8,7 +8,7 @@ import subprocess, signal
 from datetime import datetime, timedelta
 
 
-REQUEST_URLS = 'http://dreamtale90.ngrok.cc/heartbeat'
+REQUEST_URLS = 'http://dreamtale90.free.ngrok.cc/heartbeat'
 
 
 def my_print(data):
@@ -17,11 +17,12 @@ def my_print(data):
 
 
 def send_request():
-    req = urllib2.Request(REQUEST_URLS)
 
     for i in range(3):
+        result = None
         try:
-            response = urllib2.urlopen(req)
+            req = urllib2.Request(REQUEST_URLS)
+            response = urllib2.urlopen(req, timeout = 20)
             result = response.read()
 
         except urllib2.URLError, e:
@@ -51,7 +52,7 @@ def kill_proc_by_name(ProcName):
 def check_loop():
     while True:
 
-        time.sleep(60)
+        time.sleep(900)
 
         #send a request
         send_ret = send_request()
@@ -67,4 +68,5 @@ def check_loop():
 
 
 if __name__ == '__main__':
+    my_print('Monitor Start !')
     check_loop()

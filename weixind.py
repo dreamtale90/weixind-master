@@ -19,7 +19,7 @@ from weixin import WeiXinClient
 from weixin import APIError
 from weixin import AccessTokenError
 from sakshat import SAKSHAT
-#from raspberry import __HW_PROC__
+#import raspberry
 
 
 #Declare the SAKS Board
@@ -63,25 +63,20 @@ def display_time():
         if __dp:
             # 数码管显示小时和分，最后一位的小点每秒闪烁一次
             SAKS.digital_display.show(("%02d%02d." % (t.tm_hour, t.tm_min)))
-
-            # 判断是否应该响起闹钟(还有整点报时)
-            if __alarm_beep_status or ((t.tm_min == 0 and t.tm_sec == 0)
-                    and (t.tm_hour > 6 and t.tm_hour < 22)):
-                SAKS.buzzer.on()
-                SAKS.ledrow.on()
-                __alarm_beep_times = __alarm_beep_times + 1
-                # 30次没按下停止键则自动停止闹铃
-                if __alarm_beep_times > 20:
-                    __alarm_beep_status = False
         else:
             SAKS.digital_display.show(("%02d%02d" % (t.tm_hour, t.tm_min)))
 
-            # 关闭闹钟
-            if __alarm_beep_times != 0:
-                if __alarm_beep_status == False:
-                    __alarm_beep_times = 0
-                SAKS.buzzer.off()
+        if __alarm_beep_status == True:
+            __alarm_beep_times = __alarm_beep_times + 1
+            if __dp:
+                #SAKS.buzzer.on()
+                SAKS.ledrow.on()
+            else:
+                #SAKS.buzzer.off()
                 SAKS.ledrow.off()
+
+                if __alarm_beep_times > 20:
+                    __alarm_beep_status = False
 
         __dp = not __dp
         time.sleep(0.5)
@@ -179,10 +174,10 @@ def _check_user(user_id):
 
 
 user_cache = dict()
-def get_user_name(server, user_id):
+def get_user_name(userInfo, user_id):
     if user_id in user_cache:
         return user_cache[user_id]
-    user_info = server.user.info.dget(openid=user_id, lang='zh_CN')
+    user_info = userInfo.info.dget(openid=user_id, lang='zh_CN')
     user_cache[user_id] = user_info.nickname
     return user_info.nickname
 
@@ -233,9 +228,9 @@ def _take_snapshot(client, curTime):
         camera = picamera.PiCamera()
 
         #camera.led = False
-        camera.annotate_text_size = 16
+        camera.annotate_text_size = 20
         camera.annotate_foreground = picamera.Color('#FFFF00')
-        camera.annotate_text = '                                                     ' + '^_^ ' + curTime
+        camera.annotate_text = '                                         ' + curTime
         camera.resolution = (720, 480)
         #camera.sharpness = 0
         #camera.contrast = 0
@@ -307,7 +302,7 @@ def _talk_with_simsimi(topic):
 
 
 def _do_event_subscribe(server, fromUser, toUser, doc):
-    send_info_to_root(self.client, fromUser, 'text', 'subscribe' + ' (' + fromUser + ')')
+    send_info_to_root(server.client, fromUser, 'text', 'subscribe' + ' (' + fromUser + ')')
     return server._reply_text(fromUser, toUser, u'hello!')
 
 
@@ -556,7 +551,7 @@ def send_info_to_root(server, fromUser, msgType, content):
     if server is None or fromUser is None:
         message = '[%s] %s' %(curTime, content)
     else:
-        message = '[%s] %s -> %s' %(curTime, get_user_name(server, fromUser), content)
+        message = '[%s] %s -> %s' %(curTime, get_user_name(server.user, fromUser), content)
 
     print (message)
 
@@ -654,7 +649,7 @@ class weixinserver:
 
     def _send_image(self, toUser):
         image = None
-        curTime = datetime.now().strftime('%Y%m%d_%H%M%S')
+        curTime = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
         send_info_to_root(self.client, toUser, 'text', 'image:' + curTime)
 
         try:
@@ -671,14 +666,14 @@ class weixinserver:
 
     def _send_video(self, toUser):
         mediaID = [0, 0]
-        curTime = datetime.now().strftime('%Y%m%d_%H%M%S')
+        curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
         send_info_to_root(self.client, toUser, 'text', 'video:' + curTime)
         try:
             mediaID = _take_video(self.client, curTime)
         except Exception, e:
             err_msg = 'take snapshot fail: ' + _punctuation_clear(str(e))
             my_print(err_msg)
-        data = '{"touser":"%s", "msgtype":"video", "video":{"media_id":"%s", "thumb_media_id":"%s", "title":"%s", "description":"%s"}}' %(toUser, mediaID[0], mediaID[1], 'Personal Use Only !', curTime)
+        data = '{"touser":"%s", "msgtype":"video", "video":{"media_id":"%s", "thumb_media_id":"%s", "title":"%s", "description":"%s"}}' %(toUser, mediaID[0], mediaID[1], 'provide by dreamtale90', curTime)
         return self.client.message.custom.send.post(body = data)
 
     def GET(self):
@@ -719,7 +714,7 @@ raspberry = Process(target = __HW_PROC__)
 application = web.application(_URLS, globals())
 
 if __name__ == "__main__":
-    send_info_to_root(None, None, 'text', 'WeChat start !')
+    send_info_to_root(None, None, 'text', 'WeChat Start !')
 
     raspberry.start()
     application.run()
