@@ -666,7 +666,7 @@ class weixinserver:
 
     def _send_video(self, toUser):
         mediaID = [0, 0]
-        curTime = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+        curTime = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
         send_info_to_root(self.client, toUser, 'text', 'video:' + curTime)
         try:
             mediaID = _take_video(self.client, curTime)
