@@ -11,6 +11,7 @@ import hashlib
 import base64
 import memcache
 import threading
+import RPi.GPIO as GPIO
 from lxml import etree
 from datetime import datetime, timedelta
 from multiprocessing import Process, Manager
@@ -21,9 +22,17 @@ from weixin import AccessTokenError
 from sakshat import SAKSHAT
 #import raspberry
 
-
 #Declare the SAKS Board
 SAKS = SAKSHAT()
+
+# BOARD编号方式，基于插座引脚编号
+GPIO.setmode(GPIO.BCM)
+
+# 输出模式
+GPIO.setup(17, GPIO.OUT)
+GPIO.setup(27, GPIO.OUT)
+GPIO.setup(23, GPIO.OUT)
+GPIO.setup(24, GPIO.OUT)
 
 # 在这里设定闹钟定时时间
 __alarm_time = [07, 30, 00]
@@ -244,7 +253,7 @@ def _take_snapshot(client, curTime):
         #camera.awb_mode = 'auto'
         #camera.image_effect = 'none'
         #camera.color_effects = None
-        #camera.rotation = 0
+        #camera.rotation = 180
         #camera.hflip = False
         #camera.vflip = False
         #camera.crop = (0.0, 0.0, 1.0, 1.0)
@@ -363,8 +372,56 @@ def _do_click_V1004_VIDEO(server, fromUser, toUser, doc):
     return 'success'
 
 
-def _do_click_V2001_FUNC(server, fromUser, toUser, doc):
-    return server._reply_text(fromUser, toUser, u'This feature is still under development. Stay tuned !')
+def _do_click_V2001_FORWARD(server, fromUser, toUser, doc):
+    if not _check_user(fromUser):
+        return server._reply_text(fromUser, toUser, u'Permission denied…')
+
+    GPIO.output(17, GPIO.HIGH)
+    GPIO.output(27, GPIO.LOW)
+    GPIO.output(23, GPIO.HIGH)
+    GPIO.output(24, GPIO.LOW)
+    time.sleep(1)
+
+    return 'success'
+
+
+def _do_click_V2002_BACKWARD(server, fromUser, toUser, doc):
+    if not _check_user(fromUser):
+        return server._reply_text(fromUser, toUser, u'Permission denied…')
+
+    GPIO.output(17, GPIO.LOW)
+    GPIO.output(27, GPIO.HIGH)
+    GPIO.output(23, GPIO.LOW)
+    GPIO.output(24, GPIO.HIGH)
+    time.sleep(1)
+
+    return 'success'
+
+
+def _do_click_V2003_TURNLEFT(server, fromUser, toUser, doc):
+    if not _check_user(fromUser):
+        return server._reply_text(fromUser, toUser, u'Permission denied…')
+
+    GPIO.output(17, GPIO.LOW)
+    GPIO.output(27, GPIO.HIGH)
+    GPIO.output(23, GPIO.HIGH)
+    GPIO.output(24, GPIO.LOW)
+    time.sleep(0.22)
+
+    return 'success'
+
+
+def _do_click_V2004_TURNRIGHT(server, fromUser, toUser, doc):
+    if not _check_user(fromUser):
+        return server._reply_text(fromUser, toUser, u'Permission denied…')
+
+    GPIO.output(17, GPIO.HIGH)
+    GPIO.output(27, GPIO.LOW)
+    GPIO.output(23, GPIO.LOW)
+    GPIO.output(24, GPIO.HIGH)
+    time.sleep(0.22)
+
+    return 'success'
 
 
 def _do_click_V2002_FUNC(server, fromUser, toUser, doc):
@@ -384,8 +441,10 @@ _weixin_click_table = {
     'V1002_PICTURES'        :   _do_click_V1002_PICTURES,
     'V1003_VOICE'           :   _do_click_V1003_VOICE,
     'V1004_VIDEO'           :   _do_click_V1004_VIDEO,
-    'V2001_FUNC'            :   _do_click_V2001_FUNC,
-    'V2002_FUNC'            :   _do_click_V2002_FUNC,
+    'V2001_FORWARD'         :   _do_click_V2001_FORWARD,
+    'V2002_BACKWARD'        :   _do_click_V2002_BACKWARD,
+    'V2003_TURNLEFT'        :   _do_click_V2003_TURNLEFT,
+    'V2004_TURNRIGHT'       :   _do_click_V2004_TURNRIGHT,
     'V3001_FUNC'            :   _do_click_V3001_FUNC,
     'V3002_FUNC'            :   _do_click_V3002_FUNC,
 }
@@ -496,17 +555,27 @@ menu = '''{
            ,
      "button":[
        {
-           "name":"Menu2",
+           "name":"移 动",
            "sub_button":[
             {
                "type":"click",
-               "name":"Func3",
-               "key":"V2001_FUNC"
+               "name":"  前    进  ",
+               "key":"V2001_FORWARD"
             },
             {
                "type":"click",
-               "name":"Func4",
-               "key":"V2002_FUNC"
+               "name":"  后    退  ",
+               "key":"V2002_BACKWARD"
+            },
+            {
+               "type":"click",
+               "name":"  左    转  ",
+               "key":"V2003_TURNLEFT"
+            },
+            {
+               "type":"click",
+               "name":"  右    转  ",
+               "key":"V2004_TURNRIGHT"
             }]
        }]
            ,
