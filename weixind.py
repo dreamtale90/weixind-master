@@ -327,8 +327,26 @@ def _do_event_LOCATION(server, fromUser, toUser, doc):
     pass
 
 
+last_user = 'username'
+last_event = 'event_type'
+last_time = 0
+
 def _do_event_CLICK(server, fromUser, toUser, doc):
+    global last_user, last_event, last_time
+    t = time.localtime()
+    curTime = t.tm_hour*60 +  t.tm_min*60 + t.tm_sec
     key = doc.find('EventKey').text
+    user = get_user_name(server.client.user, fromUser)
+
+    # the same operate from the same user one time in 5s.
+    if (last_user == user and
+            last_event == key and 
+            (curTime - last_time) < 5):
+        return 'success'
+
+    last_user = user
+    last_event = key
+    last_time = curTime
     send_info_to_root(server.client, fromUser, 'text', key)
     try:
         return _weixin_click_table[key](server, fromUser, toUser, doc)
@@ -645,8 +663,8 @@ class weixinserver:
         self.client = WeiXinClient('wxaece866e46e9d4a6', 'c104ddad7eef2e369acb1aee01bf8341')
         try:
             self.client.request_access_token()
-            #self.client.menu.delete.post()
-            #self.client.menu.create.post(body=menu)
+            self.client.menu.delete.post()
+            self.client.menu.create.post(body=menu)
 
         except Exception, e:
             self.client.set_access_token('ThisIsAFakeToken', 1800, persistence=True)
@@ -779,11 +797,11 @@ class weixinserver:
         else:
             return self._reply_text(fromUser, toUser, u'Unknow msg:' + msgType)
 
-raspberry = Process(target = __HW_PROC__)
+#raspberry = Process(target = __HW_PROC__)
 application = web.application(_URLS, globals())
 
 if __name__ == "__main__":
     send_info_to_root(None, None, 'text', 'WeChat Start !')
 
-    raspberry.start()
+    #raspberry.start()
     application.run()
