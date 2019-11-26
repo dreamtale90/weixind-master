@@ -1,0 +1,6 @@
+[submodule "tools/weixinpy"]
+	path = tools/weixinpy
+	url = https://github.com/kun945/weixinpy.git
+[submodule "tools/webpy"]
+	path = tools/webpy
+	url = git://github.com/webpy/webpy.git

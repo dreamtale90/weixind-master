@@ -1,0 +1,25 @@
+begin
+	prog = irexec
+	button = KEY_UP
+	config = python ~/raspberry_car.py Forward
+end
+begin
+	prog = irexec
+	button = KEY_DOWN
+	config = python ~/raspberry_car.py Backward
+end
+begin
+	prog = irexec
+	button = KEY_LEFT
+	config = python ~/raspberry_car.py TurnLeft
+end
+begin
+	prog = irexec
+	button = KEY_RIGHT
+	config = python ~/raspberry_car.py TurnRight
+end
+begin
+	prog = irexec
+	button = KEY_ORDER
+	config = /home/pi/Workdir/ExpandBoard/c/led
+end

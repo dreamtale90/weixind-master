@@ -1,0 +1,2 @@
+1.将.lircrc文件放到root用户目录下
+2.将lircd.conf放到/etc/lirc/lircd.conf
