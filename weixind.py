@@ -25,15 +25,6 @@ from sakshat import SAKSHAT
 #Declare the SAKS Board
 SAKS = SAKSHAT()
 
-# BOARD编号方式，基于插座引脚编号
-GPIO.setmode(GPIO.BCM)
-
-# 输出模式
-GPIO.setup(17, GPIO.OUT)
-GPIO.setup(27, GPIO.OUT)
-GPIO.setup(23, GPIO.OUT)
-GPIO.setup(24, GPIO.OUT)
-
 # 在这里设定闹钟定时时间
 __alarm_time = [07, 30, 00]
 __alarm_beep_status = False
@@ -394,11 +385,21 @@ def _do_click_V2001_FORWARD(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
 
+    # BOARD编号方式，基于插座引脚编号
+    GPIO.setmode(GPIO.BCM)
+
+    # 输出模式
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.setup(27, GPIO.OUT)
+    GPIO.setup(23, GPIO.OUT)
+    GPIO.setup(24, GPIO.OUT)
+
     GPIO.output(17, GPIO.HIGH)
     GPIO.output(27, GPIO.LOW)
     GPIO.output(23, GPIO.HIGH)
     GPIO.output(24, GPIO.LOW)
-    time.sleep(1)
+    time.sleep(2)
+    GPIO.cleanup()
 
     return 'success'
 
@@ -407,11 +408,21 @@ def _do_click_V2002_BACKWARD(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
 
+    # BOARD编号方式，基于插座引脚编号
+    GPIO.setmode(GPIO.BCM)
+
+    # 输出模式
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.setup(27, GPIO.OUT)
+    GPIO.setup(23, GPIO.OUT)
+    GPIO.setup(24, GPIO.OUT)
+
     GPIO.output(17, GPIO.LOW)
     GPIO.output(27, GPIO.HIGH)
     GPIO.output(23, GPIO.LOW)
     GPIO.output(24, GPIO.HIGH)
-    time.sleep(1)
+    time.sleep(2)
+    GPIO.cleanup()
 
     return 'success'
 
@@ -420,11 +431,21 @@ def _do_click_V2003_TURNLEFT(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
 
+    # BOARD编号方式，基于插座引脚编号
+    GPIO.setmode(GPIO.BCM)
+
+    # 输出模式
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.setup(27, GPIO.OUT)
+    GPIO.setup(23, GPIO.OUT)
+    GPIO.setup(24, GPIO.OUT)
+
     GPIO.output(17, GPIO.LOW)
     GPIO.output(27, GPIO.HIGH)
     GPIO.output(23, GPIO.HIGH)
     GPIO.output(24, GPIO.LOW)
     time.sleep(0.22)
+    GPIO.cleanup()
 
     return 'success'
 
@@ -433,11 +454,21 @@ def _do_click_V2004_TURNRIGHT(server, fromUser, toUser, doc):
     if not _check_user(fromUser):
         return server._reply_text(fromUser, toUser, u'Permission denied…')
 
+    # BOARD编号方式，基于插座引脚编号
+    GPIO.setmode(GPIO.BCM)
+
+    # 输出模式
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.setup(27, GPIO.OUT)
+    GPIO.setup(23, GPIO.OUT)
+    GPIO.setup(24, GPIO.OUT)
+
     GPIO.output(17, GPIO.HIGH)
     GPIO.output(27, GPIO.LOW)
     GPIO.output(23, GPIO.LOW)
     GPIO.output(24, GPIO.HIGH)
     time.sleep(0.22)
+    GPIO.cleanup()
 
     return 'success'
 
@@ -801,7 +832,7 @@ class weixinserver:
 application = web.application(_URLS, globals())
 
 if __name__ == "__main__":
-    send_info_to_root(None, None, 'text', 'WeChat Start !')
+    #send_info_to_root(None, None, 'text', 'WeChat Start !')
 
     #raspberry.start()
     application.run()
